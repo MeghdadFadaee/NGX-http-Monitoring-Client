@@ -2,10 +2,14 @@ package net.rodakot.ngxhttpmonitoringclient.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val CommandBlack = Color(0xFF0E1116)
+val CommandPanel = Color(0xFF171C23)
+val CommandPanelRaised = Color(0xFF202733)
+val CommandText = Color(0xFFEAF0F7)
+val CommandMuted = Color(0xFF9AA6B6)
+val CommandLight = Color(0xFFF5F7FA)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val SignalGreen = Color(0xFF35D38B)
+val SignalCyan = Color(0xFF4CC9F0)
+val SignalAmber = Color(0xFFFFB84D)
+val SignalRed = Color(0xFFFF5A52)
