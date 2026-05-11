@@ -18,7 +18,7 @@ import org.json.JSONException
 class MonitorRepository(context: Context) {
     private val database = MonitorDatabase(context.applicationContext)
     private val cipher = CredentialCipher()
-    private val client = MonitorHttpClient()
+    private val client = MonitorHttpClient(context.applicationContext)
     private val alertCooldownMillis = TimeUnit.MINUTES.toMillis(30)
 
     fun servers(): List<ServerProfile> = database.listServers()
@@ -26,6 +26,8 @@ class MonitorRepository(context: Context) {
     fun latestSummaries(serverIds: List<String>): Map<String, MetricSummary> = database.latestSummaries(serverIds)
 
     fun history(serverId: String): List<MetricSummary> = database.samplesForServer(serverId)
+
+    fun routeDiagnostics(): Map<String, net.rodakot.ngxhttpmonitoringclient.model.RouteDiagnostics> = database.routeDiagnostics()
 
     fun alerts(): List<AlertEvent> = database.alerts()
 
@@ -35,6 +37,7 @@ class MonitorRepository(context: Context) {
             id = server.id,
             name = server.name,
             baseUrl = server.baseUrl,
+            fallbackIpAddresses = server.fallbackIpAddresses.joinToString(", "),
             tags = server.tags.joinToString(", "),
             favorite = server.favorite,
             allowHttp = server.allowHttp,
@@ -63,6 +66,7 @@ class MonitorRepository(context: Context) {
             id = draft.id ?: UUID.randomUUID().toString(),
             name = draft.name.trim().ifBlank { baseUrl },
             baseUrl = baseUrl,
+            fallbackIpAddresses = UrlRules.parseFallbackIps(draft.fallbackIpAddresses),
             tags = draft.tags.split(',').map { it.trim() }.filter { it.isNotBlank() }.distinct(),
             favorite = draft.favorite,
             allowHttp = draft.allowHttp,
@@ -91,8 +95,9 @@ class MonitorRepository(context: Context) {
 
     fun testConnection(draft: ServerEditorDraft): Result<String> = runCatching {
         val server = buildServer(draft.copy(id = draft.id ?: "test"))
-        client.fetchHealth(server, authFor(server))
-        "Connection works"
+        val response = client.fetchHealth(server, authFor(server))
+        database.upsertRouteDiagnostics(response.diagnostics.copy(serverId = server.id))
+        "Connection works through ${response.diagnostics.routeUsed.label}"
     }
 
     fun fetchApiSummary(server: ServerProfile, forcePersist: Boolean = false): MetricSummary {
@@ -101,17 +106,19 @@ class MonitorRepository(context: Context) {
 
     fun refreshServer(server: ServerProfile, forcePersist: Boolean = false): RefreshResult {
         return try {
-            val payload = client.fetchApi(server, authFor(server))
-            val parsed = MonitorJsonParser.parse(server.id, payload)
+            val response = client.fetchApi(server, authFor(server))
+            database.upsertRouteDiagnostics(response.diagnostics)
+            val parsed = MonitorJsonParser.parse(server.id, response.body)
             val events = AlertEvaluator.evaluate(server, parsed)
             val status = if (events.isEmpty()) ServerStatus.Online else ServerStatus.Degraded
             val summary = parsed.copy(
                 status = status,
                 message = if (status == ServerStatus.Online) "Live" else "Threshold breached",
             )
-            persistSample(server, summary, payload, forcePersist)
+            persistSample(server, summary, response.body, forcePersist)
             RefreshResult(summary, recordAlerts(server, summary))
         } catch (exception: MonitorClientException) {
+            database.upsertRouteDiagnostics(exception.diagnostics)
             val summary = MetricSummary(
                 serverId = server.id,
                 timestampMillis = System.currentTimeMillis(),
@@ -142,7 +149,11 @@ class MonitorRepository(context: Context) {
     }
 
     fun streamLive(server: ServerProfile, onSummary: (MetricSummary) -> Unit) {
-        client.streamLive(server, authFor(server)) { payload ->
+        client.streamLive(
+            server = server,
+            auth = authFor(server),
+            onDiagnostics = database::upsertRouteDiagnostics,
+        ) { payload ->
             val parsed = MonitorJsonParser.parse(server.id, payload)
             val events = AlertEvaluator.evaluate(server, parsed)
             val status = if (events.isEmpty()) ServerStatus.Online else ServerStatus.Degraded

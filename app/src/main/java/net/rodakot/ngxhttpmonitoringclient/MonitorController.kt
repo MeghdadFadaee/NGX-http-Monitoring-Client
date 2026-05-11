@@ -41,12 +41,14 @@ class MonitorController(context: Context) {
             val summaries = repository.latestSummaries(servers.map { it.id })
             val history = selected?.let { mapOf(it to repository.history(it)) }.orEmpty()
             val alerts = repository.alerts()
+            val routeDiagnostics = repository.routeDiagnostics()
             _state.update {
                 it.copy(
                     servers = servers,
                     selectedServerId = selected,
                     summaries = summaries,
                     history = history,
+                    routeDiagnostics = routeDiagnostics,
                     alerts = alerts,
                     globalMessage = null,
                 )
@@ -140,10 +142,12 @@ class MonitorController(context: Context) {
                     val servers = repository.servers()
                     val summaries = repository.latestSummaries(servers.map { it.id })
                     val history = repository.history(server.id)
+                    val routeDiagnostics = repository.routeDiagnostics()
                     _state.update {
                         it.copy(
                             servers = servers,
                             summaries = summaries,
+                            routeDiagnostics = routeDiagnostics,
                             selectedServerId = server.id,
                             showDetail = true,
                             selectedTab = DetailTab.Overview,
@@ -191,6 +195,7 @@ class MonitorController(context: Context) {
                     selectedTab = DetailTab.Overview,
                     summaries = repository.latestSummaries(servers.map { item -> item.id }),
                     history = selected?.let { id -> mapOf(id to repository.history(id)) }.orEmpty(),
+                    routeDiagnostics = repository.routeDiagnostics(),
                     alerts = repository.alerts(),
                     globalMessage = "Server deleted",
                 )
@@ -233,10 +238,12 @@ class MonitorController(context: Context) {
         val selected = _state.value.selectedServerId
         val history = selected?.let { repository.history(it) }
         val alerts = repository.alerts()
+        val routeDiagnostics = repository.routeDiagnostics()
         withContext(Dispatchers.Main.immediate) {
             _state.update {
                 it.copy(
                     alerts = alerts,
+                    routeDiagnostics = routeDiagnostics,
                     history = if (selected != null && history != null) it.history + (selected to history) else it.history,
                 )
             }

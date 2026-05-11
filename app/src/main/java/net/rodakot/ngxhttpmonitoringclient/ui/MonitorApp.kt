@@ -71,6 +71,8 @@ import net.rodakot.ngxhttpmonitoringclient.model.DefaultMemoryThreshold
 import net.rodakot.ngxhttpmonitoringclient.model.DetailTab
 import net.rodakot.ngxhttpmonitoringclient.model.MetricSummary
 import net.rodakot.ngxhttpmonitoringclient.model.MonitorUiState
+import net.rodakot.ngxhttpmonitoringclient.model.NetworkIssue
+import net.rodakot.ngxhttpmonitoringclient.model.RouteDiagnostics
 import net.rodakot.ngxhttpmonitoringclient.model.ServerEditorDraft
 import net.rodakot.ngxhttpmonitoringclient.model.ServerProfile
 import net.rodakot.ngxhttpmonitoringclient.model.ServerStatus
@@ -204,6 +206,7 @@ private fun FleetCommandDeck(
                 ServerCommandRow(
                     server = server,
                     summary = state.summaries[server.id],
+                    diagnostics = state.routeDiagnostics[server.id],
                     onClick = { controller.selectServer(server.id) },
                 )
             }
@@ -346,7 +349,12 @@ private fun CommandFilters(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ServerCommandRow(server: ServerProfile, summary: MetricSummary?, onClick: () -> Unit) {
+private fun ServerCommandRow(
+    server: ServerProfile,
+    summary: MetricSummary?,
+    diagnostics: RouteDiagnostics?,
+    onClick: () -> Unit,
+) {
     val status = summary?.status ?: ServerStatus.Unknown
     val health = healthScore(summary)
     Surface(
@@ -393,6 +401,7 @@ private fun ServerCommandRow(server: ServerProfile, summary: MetricSummary?, onC
                     LabelCapsule(statusLabel(status).uppercase(), colorForStatus(status))
                     if (!server.enabled) LabelCapsule("OFF", StatusUnknown)
                     if (server.allowHttp) LabelCapsule("HTTP", StatusInsecure)
+                    RouteBadges(diagnostics)
                     server.tags.take(3).forEach { LabelCapsule(it.uppercase(), MaterialTheme.colorScheme.secondary) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -422,6 +431,9 @@ private fun ServerCockpit(
     ) {
         item {
             CockpitHero(server, summary, controller)
+        }
+        item {
+            RoutePanel(state.routeDiagnostics[server.id])
         }
         item {
             CockpitTabs(selected = state.selectedTab, onSelect = controller::setDetailTab)
@@ -472,6 +484,25 @@ private fun CockpitHero(server: ServerProfile, summary: MetricSummary?, controll
                 MiniMetric("MEM", summary?.memoryPercent.formatPercent(), colorForPercent(summary?.memoryPercent), Modifier.weight(1f))
                 MiniMetric("DISK", summary?.diskPercent.formatPercent(), colorForPercent(summary?.diskPercent), Modifier.weight(1f))
                 MiniMetric("P95", summary?.latencyP95Millis.formatMillis(), StatusWarning, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoutePanel(diagnostics: RouteDiagnostics?) {
+    DataPanel("Route") {
+        if (diagnostics == null) {
+            Text("No route check has completed yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                RuleRow("Network", diagnostics.activeNetwork)
+                RuleRow("Route", diagnostics.routeUsed.label)
+                RuleRow("DNS", diagnostics.dnsResult)
+                RuleRow("VPN", if (diagnostics.vpnActive) "Active" else "Inactive")
+                RuleRow("Fallback", if (diagnostics.fallbackUsed) "Used" else "Not used")
+                RuleRow("Last result", diagnostics.summary)
+                RuleRow("Checked", diagnostics.timestampMillis.formatTime())
             }
         }
     }
@@ -563,6 +594,7 @@ private fun SettingsCockpit(server: ServerProfile, controller: MonitorController
             RuleRow("Disk limit", "${server.alertOverrides.diskPercent ?: DefaultDiskThreshold}%")
             RuleRow("p95 latency", "${(server.alertOverrides.latencyP95Millis ?: DefaultLatencyP95ThresholdMs).toInt()} ms")
             RuleRow("5xx limit", "${server.alertOverrides.errors5xx ?: DefaultErrors5xxThreshold}")
+            RuleRow("Fallback IPs", server.fallbackIpAddresses.ifEmpty { listOf("None") }.joinToString(", "))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(onClick = controller::showEditSelectedServer, shape = RoundedCornerShape(8.dp)) { Text("Edit") }
                 OutlinedButton(onClick = controller::deleteSelectedServer, shape = RoundedCornerShape(8.dp)) { Text("Delete") }
@@ -662,6 +694,16 @@ private fun LabelCapsule(text: String, color: Color) {
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
         )
+    }
+}
+
+@Composable
+private fun RouteBadges(diagnostics: RouteDiagnostics?) {
+    if (diagnostics == null) return
+    if (diagnostics.vpnActive) LabelCapsule("VPN", StatusWarning)
+    if (diagnostics.fallbackUsed) LabelCapsule("LAN FALLBACK", StatusOnline)
+    if (!diagnostics.success && diagnostics.issue != NetworkIssue.None) {
+        LabelCapsule(diagnostics.issue.label.uppercase(), routeIssueColor(diagnostics.issue))
     }
 }
 
@@ -834,6 +876,7 @@ private fun ServerEditorDialog(
                 }
                 item { EditorField("Display name", draft.name) { value -> onChange { it.copy(name = value) } } }
                 item { EditorField("Base URL", draft.baseUrl) { value -> onChange { it.copy(baseUrl = value) } } }
+                item { EditorField("Fallback LAN IPs", draft.fallbackIpAddresses) { value -> onChange { it.copy(fallbackIpAddresses = value) } } }
                 item { EditorField("Tags", draft.tags) { value -> onChange { it.copy(tags = value) } } }
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1003,6 +1046,19 @@ private fun colorForPercent(value: Double?): Color = when {
     value >= 90.0 -> StatusCritical
     value >= 75.0 -> StatusWarning
     else -> StatusOnline
+}
+
+private fun routeIssueColor(issue: NetworkIssue): Color = when (issue) {
+    NetworkIssue.None -> StatusOnline
+    NetworkIssue.DnsFailure -> StatusInsecure
+    NetworkIssue.VpnActive -> StatusWarning
+    NetworkIssue.LanRouteBlocked -> StatusWarning
+    NetworkIssue.Timeout -> StatusWarning
+    NetworkIssue.TlsFailure -> StatusCritical
+    NetworkIssue.AuthFailure -> StatusCritical
+    NetworkIssue.ApiFailure -> StatusCritical
+    NetworkIssue.RateLimited -> StatusWarning
+    NetworkIssue.Unknown -> StatusUnknown
 }
 
 private fun Double?.formatPercent(): String = this?.let { "${it.toInt()}%" } ?: "--"

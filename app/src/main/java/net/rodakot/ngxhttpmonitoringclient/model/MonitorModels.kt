@@ -13,6 +13,8 @@ data class ServerProfile(
     val id: String,
     val name: String,
     val baseUrl: String,
+    val fallbackIpAddresses: List<String> = emptyList(),
+    val routePolicy: RoutePolicy = RoutePolicy.AutoFallback,
     val tags: List<String> = emptyList(),
     val favorite: Boolean = false,
     val allowHttp: Boolean = false,
@@ -29,6 +31,49 @@ data class AuthConfig(
     val basicUsername: String? = null,
     val basicPassword: String? = null,
 )
+
+enum class RoutePolicy {
+    AutoFallback,
+}
+
+enum class RouteKind(val label: String) {
+    SystemDns("System DNS"),
+    FallbackDns("Fallback DNS"),
+    LanSystemDns("LAN DNS"),
+    LanFallbackDns("LAN fallback"),
+}
+
+enum class NetworkIssue(val label: String) {
+    None("OK"),
+    DnsFailure("DNS failure"),
+    VpnActive("VPN active"),
+    LanRouteBlocked("LAN route blocked"),
+    Timeout("Timeout"),
+    TlsFailure("TLS failure"),
+    AuthFailure("Authentication failed"),
+    ApiFailure("API failure"),
+    RateLimited("Rate limited"),
+    Unknown("Network error"),
+}
+
+data class RouteDiagnostics(
+    val serverId: String,
+    val timestampMillis: Long,
+    val activeNetwork: String = "Unknown",
+    val routeUsed: RouteKind = RouteKind.SystemDns,
+    val dnsResult: String = "System DNS",
+    val issue: NetworkIssue = NetworkIssue.None,
+    val vpnActive: Boolean = false,
+    val fallbackUsed: Boolean = false,
+    val success: Boolean = false,
+) {
+    val summary: String
+        get() = if (success) {
+            "Connected through ${routeUsed.label}"
+        } else {
+            issue.label
+        }
+}
 
 data class AlertOverrides(
     val cpuPercent: Double? = null,
@@ -87,6 +132,7 @@ data class ServerEditorDraft(
     val id: String? = null,
     val name: String = "",
     val baseUrl: String = "",
+    val fallbackIpAddresses: String = "",
     val tags: String = "",
     val favorite: Boolean = false,
     val allowHttp: Boolean = false,
@@ -118,6 +164,7 @@ data class MonitorUiState(
     val servers: List<ServerProfile> = emptyList(),
     val summaries: Map<String, MetricSummary> = emptyMap(),
     val history: Map<String, List<MetricSummary>> = emptyMap(),
+    val routeDiagnostics: Map<String, RouteDiagnostics> = emptyMap(),
     val alerts: List<AlertEvent> = emptyList(),
     val selectedServerId: String? = null,
     val showDetail: Boolean = false,

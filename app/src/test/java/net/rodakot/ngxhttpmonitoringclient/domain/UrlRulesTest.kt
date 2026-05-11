@@ -24,4 +24,12 @@ class UrlRulesTest {
             UrlRules.endpoint("https://monitor.example.com/", "/monitor/api"),
         )
     }
+
+    @Test
+    fun parseFallbackIps_acceptsCommaAndWhitespaceSeparatedValues() {
+        assertEquals(
+            listOf("192.168.1.20", "10.0.0.5"),
+            UrlRules.parseFallbackIps("192.168.1.20, 10.0.0.5\n192.168.1.20"),
+        )
+    }
 }

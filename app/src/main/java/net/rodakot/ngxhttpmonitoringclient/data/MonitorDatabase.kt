@@ -10,12 +10,16 @@ import net.rodakot.ngxhttpmonitoringclient.model.AlertOverrides
 import net.rodakot.ngxhttpmonitoringclient.model.AlertSeverity
 import net.rodakot.ngxhttpmonitoringclient.model.HistoryRetentionDays
 import net.rodakot.ngxhttpmonitoringclient.model.MetricSummary
+import net.rodakot.ngxhttpmonitoringclient.model.NetworkIssue
+import net.rodakot.ngxhttpmonitoringclient.model.RouteDiagnostics
+import net.rodakot.ngxhttpmonitoringclient.model.RouteKind
+import net.rodakot.ngxhttpmonitoringclient.model.RoutePolicy
 import net.rodakot.ngxhttpmonitoringclient.model.ServerProfile
 import net.rodakot.ngxhttpmonitoringclient.model.ServerStatus
 import org.json.JSONArray
 import java.util.concurrent.TimeUnit
 
-class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor.db", null, 1) {
+class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -23,6 +27,8 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 base_url TEXT NOT NULL,
+                fallback_ips_json TEXT NOT NULL,
+                route_policy TEXT NOT NULL,
                 tags_json TEXT NOT NULL,
                 favorite INTEGER NOT NULL,
                 allow_http INTEGER NOT NULL,
@@ -74,9 +80,16 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
             """.trimIndent(),
         )
         db.execSQL("CREATE INDEX alerts_server_time ON alerts(server_id, timestamp_millis DESC)")
+        createRouteDiagnosticsTable(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE servers ADD COLUMN fallback_ips_json TEXT NOT NULL DEFAULT '[]'")
+            db.execSQL("ALTER TABLE servers ADD COLUMN route_policy TEXT NOT NULL DEFAULT '${RoutePolicy.AutoFallback.name}'")
+            createRouteDiagnosticsTable(db)
+        }
+    }
 
     @Synchronized
     fun listServers(): List<ServerProfile> {
@@ -97,6 +110,7 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
         writableDatabase.delete("servers", "id = ?", arrayOf(serverId))
         writableDatabase.delete("samples", "server_id = ?", arrayOf(serverId))
         writableDatabase.delete("alerts", "server_id = ?", arrayOf(serverId))
+        writableDatabase.delete("route_diagnostics", "server_id = ?", arrayOf(serverId))
     }
 
     @Synchronized
@@ -191,6 +205,28 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
     }
 
     @Synchronized
+    fun upsertRouteDiagnostics(diagnostics: RouteDiagnostics) {
+        writableDatabase.insertWithOnConflict(
+            "route_diagnostics",
+            null,
+            diagnostics.toValues(),
+            SQLiteDatabase.CONFLICT_REPLACE,
+        )
+    }
+
+    @Synchronized
+    fun routeDiagnostics(): Map<String, RouteDiagnostics> {
+        val result = linkedMapOf<String, RouteDiagnostics>()
+        readableDatabase.query("route_diagnostics", null, null, null, null, null, "timestamp_millis DESC").use { cursor ->
+            while (cursor.moveToNext()) {
+                val diagnostics = cursor.toRouteDiagnostics()
+                result[diagnostics.serverId] = diagnostics
+            }
+        }
+        return result
+    }
+
+    @Synchronized
     fun pruneOldSamples(nowMillis: Long = System.currentTimeMillis()) {
         val cutoff = nowMillis - TimeUnit.DAYS.toMillis(HistoryRetentionDays.toLong())
         writableDatabase.delete("samples", "timestamp_millis < ?", arrayOf(cutoff.toString()))
@@ -200,6 +236,8 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
         put("id", id)
         put("name", name)
         put("base_url", baseUrl)
+        put("fallback_ips_json", listToJson(fallbackIpAddresses))
+        put("route_policy", routePolicy.name)
         put("tags_json", tagsToJson(tags))
         put("favorite", favorite.asInt())
         put("allow_http", allowHttp.asInt())
@@ -241,11 +279,25 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
         put("resolved", resolved.asInt())
     }
 
+    private fun RouteDiagnostics.toValues() = ContentValues().apply {
+        put("server_id", serverId)
+        put("timestamp_millis", timestampMillis)
+        put("active_network", activeNetwork)
+        put("route_used", routeUsed.name)
+        put("dns_result", dnsResult)
+        put("issue", issue.name)
+        put("vpn_active", vpnActive.asInt())
+        put("fallback_used", fallbackUsed.asInt())
+        put("success", success.asInt())
+    }
+
     private fun Cursor.toServer(): ServerProfile {
         return ServerProfile(
             id = string("id"),
             name = string("name"),
             baseUrl = string("base_url"),
+            fallbackIpAddresses = listFromJson(string("fallback_ips_json")),
+            routePolicy = runCatching { RoutePolicy.valueOf(string("route_policy")) }.getOrDefault(RoutePolicy.AutoFallback),
             tags = tagsFromJson(string("tags_json")),
             favorite = int("favorite") == 1,
             allowHttp = int("allow_http") == 1,
@@ -294,16 +346,54 @@ class MonitorDatabase(context: Context) : SQLiteOpenHelper(context, "ngx_monitor
         )
     }
 
+    private fun Cursor.toRouteDiagnostics(): RouteDiagnostics {
+        return RouteDiagnostics(
+            serverId = string("server_id"),
+            timestampMillis = long("timestamp_millis"),
+            activeNetwork = string("active_network"),
+            routeUsed = runCatching { RouteKind.valueOf(string("route_used")) }.getOrDefault(RouteKind.SystemDns),
+            dnsResult = string("dns_result"),
+            issue = runCatching { NetworkIssue.valueOf(string("issue")) }.getOrDefault(NetworkIssue.Unknown),
+            vpnActive = int("vpn_active") == 1,
+            fallbackUsed = int("fallback_used") == 1,
+            success = int("success") == 1,
+        )
+    }
+
     private fun tagsToJson(tags: List<String>): String {
+        return listToJson(tags)
+    }
+
+    private fun listToJson(values: List<String>): String {
         val array = JSONArray()
-        tags.map { it.trim() }.filter { it.isNotBlank() }.distinct().forEach(array::put)
+        values.map { it.trim() }.filter { it.isNotBlank() }.distinct().forEach(array::put)
         return array.toString()
     }
 
-    private fun tagsFromJson(value: String): List<String> = runCatching {
+    private fun tagsFromJson(value: String): List<String> = listFromJson(value)
+
+    private fun listFromJson(value: String): List<String> = runCatching {
         val array = JSONArray(value)
         List(array.length()) { index -> array.optString(index) }.filter { it.isNotBlank() }
     }.getOrDefault(emptyList())
+
+    private fun createRouteDiagnosticsTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS route_diagnostics (
+                server_id TEXT PRIMARY KEY,
+                timestamp_millis INTEGER NOT NULL,
+                active_network TEXT NOT NULL,
+                route_used TEXT NOT NULL,
+                dns_result TEXT NOT NULL,
+                issue TEXT NOT NULL,
+                vpn_active INTEGER NOT NULL,
+                fallback_used INTEGER NOT NULL,
+                success INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
 
     private fun Boolean.asInt() = if (this) 1 else 0
 

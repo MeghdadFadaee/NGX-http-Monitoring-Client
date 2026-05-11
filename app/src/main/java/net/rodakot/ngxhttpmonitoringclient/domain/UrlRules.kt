@@ -1,6 +1,7 @@
 package net.rodakot.ngxhttpmonitoringclient.domain
 
 import java.net.URI
+import java.net.InetAddress
 
 object UrlRules {
     fun normalizeBaseUrl(input: String): String {
@@ -29,5 +30,17 @@ object UrlRules {
     fun endpoint(baseUrl: String, path: String): String {
         val normalizedPath = if (path.startsWith("/")) path else "/$path"
         return normalizeBaseUrl(baseUrl) + normalizedPath
+    }
+
+    fun parseFallbackIps(input: String): List<String> {
+        return input
+            .split(',', '\n', ' ')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .onEach { value ->
+                runCatching { InetAddress.getByName(value) }
+                    .getOrElse { throw IllegalArgumentException("Invalid fallback IP: $value") }
+            }
     }
 }
