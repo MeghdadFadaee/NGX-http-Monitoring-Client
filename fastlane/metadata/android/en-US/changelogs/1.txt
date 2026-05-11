@@ -1,0 +1,7 @@
+Initial release.
+
+- Fleet monitor for Nginx monitor endpoints
+- Server detail cockpit with system, request, disk, alert, history, and route diagnostics
+- VPN and DNS resilience with fallback LAN IPs
+- Home-screen widgets for fleet status, server bars, metric sparklines, telemetry graphs, and incidents
+- Local encrypted credential storage

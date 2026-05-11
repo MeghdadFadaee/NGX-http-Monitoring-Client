@@ -587,17 +587,27 @@ private fun HistoryCockpit(history: List<MetricSummary>) {
 
 @Composable
 private fun SettingsCockpit(server: ServerProfile, controller: MonitorController) {
-    DataPanel("Alert Rules") {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            RuleRow("CPU limit", "${server.alertOverrides.cpuPercent ?: DefaultCpuThreshold}%")
-            RuleRow("Memory limit", "${server.alertOverrides.memoryPercent ?: DefaultMemoryThreshold}%")
-            RuleRow("Disk limit", "${server.alertOverrides.diskPercent ?: DefaultDiskThreshold}%")
-            RuleRow("p95 latency", "${(server.alertOverrides.latencyP95Millis ?: DefaultLatencyP95ThresholdMs).toInt()} ms")
-            RuleRow("5xx limit", "${server.alertOverrides.errors5xx ?: DefaultErrors5xxThreshold}")
-            RuleRow("Fallback IPs", server.fallbackIpAddresses.ifEmpty { listOf("None") }.joinToString(", "))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = controller::showEditSelectedServer, shape = RoundedCornerShape(8.dp)) { Text("Edit") }
-                OutlinedButton(onClick = controller::deleteSelectedServer, shape = RoundedCornerShape(8.dp)) { Text("Delete") }
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        DataPanel("Alert Rules") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                RuleRow("CPU limit", "${server.alertOverrides.cpuPercent ?: DefaultCpuThreshold}%")
+                RuleRow("Memory limit", "${server.alertOverrides.memoryPercent ?: DefaultMemoryThreshold}%")
+                RuleRow("Disk limit", "${server.alertOverrides.diskPercent ?: DefaultDiskThreshold}%")
+                RuleRow("p95 latency", "${(server.alertOverrides.latencyP95Millis ?: DefaultLatencyP95ThresholdMs).toInt()} ms")
+                RuleRow("5xx limit", "${server.alertOverrides.errors5xx ?: DefaultErrors5xxThreshold}")
+                RuleRow("Fallback IPs", server.fallbackIpAddresses.ifEmpty { listOf("None") }.joinToString(", "))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(onClick = controller::showEditSelectedServer, shape = RoundedCornerShape(8.dp)) { Text("Edit") }
+                    OutlinedButton(onClick = controller::deleteSelectedServer, shape = RoundedCornerShape(8.dp)) { Text("Delete") }
+                }
+            }
+        }
+        DataPanel("Privacy") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                RuleRow("Storage", "Server profiles, credentials, samples, alerts, and widget choices stay on this device.")
+                RuleRow("Credentials", "Monitor tokens and Basic Auth passwords are encrypted with Android Keystore.")
+                RuleRow("Network", "The app connects only to monitor endpoints configured by the user.")
+                RuleRow("Backups", "Android cloud backup and device transfer are disabled for app data.")
             }
         }
     }

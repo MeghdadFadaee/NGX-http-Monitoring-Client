@@ -118,3 +118,12 @@ app/src/main/java/net/rodakot/ngxhttpmonitoringclient/
 - Widget layouts: `app/src/main/res/layout/widget_fleet.xml`, `widget_server.xml`, `widget_metric.xml`, `widget_graph.xml`, `widget_incidents.xml`
 
 These assets are vector drawables, so they scale cleanly across screen densities.
+
+## Google Play Release
+
+Release configuration, signing instructions, Play Console metadata, and privacy/data-safety drafts live in:
+
+- `docs/PLAY_STORE_RELEASE.md`
+- `docs/PLAY_STORE_DATA_SAFETY.md`
+- `docs/PRIVACY_POLICY.md`
+- `fastlane/metadata/android/en-US/`

@@ -1,0 +1,9 @@
+## Copy these values into local.properties or export them as environment variables
+## before building the signed Play upload bundle.
+##
+## Do not commit local.properties or the keystore file.
+
+NGX_RELEASE_STORE_FILE=C:\\path\\to\\ngx-monitor-upload.jks
+NGX_RELEASE_STORE_PASSWORD=replace-with-keystore-password
+NGX_RELEASE_KEY_ALIAS=ngx-monitor-upload
+NGX_RELEASE_KEY_PASSWORD=replace-with-key-password

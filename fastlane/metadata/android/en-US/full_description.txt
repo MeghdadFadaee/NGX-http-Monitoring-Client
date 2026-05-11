@@ -1,0 +1,15 @@
+NGX Monitor is a focused Android client for Nginx monitor endpoints.
+
+Track CPU, memory, storage, request rate, latency, connection state, HTTP errors, and route health from your phone. The app is designed for server administrators who monitor multiple Nginx hosts and need a fast, readable mobile command deck.
+
+Key features:
+- Monitor 20+ servers from one fleet view
+- View live CPU, memory, storage, request, latency, and connection signals
+- Follow Nginx worker, request, upstream, disk, history, alert, and route diagnostics
+- Configure monitor API tokens and optional Basic Auth credentials
+- Store credentials locally with Android Keystore encryption
+- Use fallback LAN IPs for VPN, DNS, and local network routing problems
+- Get Android notifications for degraded or unreachable servers
+- Add home-screen widgets for fleet status, server bars, metric sparklines, telemetry graphs, and incident watch
+
+NGX Monitor connects only to the monitor endpoints you configure. HTTPS endpoints are recommended, and HTTP endpoints are supported for private LAN monitoring.

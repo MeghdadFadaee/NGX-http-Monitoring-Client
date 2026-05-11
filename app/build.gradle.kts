@@ -1,7 +1,31 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun releaseSecret(name: String): String? {
+    return providers.environmentVariable(name).orNull ?: localProperties.getProperty(name)
+}
+
+val releaseStoreFile = releaseSecret("NGX_RELEASE_STORE_FILE")
+val releaseStorePassword = releaseSecret("NGX_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = releaseSecret("NGX_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = releaseSecret("NGX_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "net.rodakot.ngxhttpmonitoringclient"
@@ -15,15 +39,30 @@ android {
         applicationId = "net.rodakot.ngxhttpmonitoringclient"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (providers.gradleProperty("VERSION_CODE").orNull ?: "1").toInt()
+        versionName = providers.gradleProperty("VERSION_NAME").orNull ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

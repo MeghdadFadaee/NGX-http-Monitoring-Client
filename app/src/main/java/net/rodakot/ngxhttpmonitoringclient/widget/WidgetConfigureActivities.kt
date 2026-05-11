@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -66,14 +67,14 @@ abstract class BaseWidgetConfigureActivity : Activity() {
             orientation = RadioGroup.VERTICAL
             servers.forEachIndexed { index, server ->
                 addView(RadioButton(this@BaseWidgetConfigureActivity).apply {
-                    id = index + 1
+                    id = View.generateViewId()
                     text = server.name
                     setTextColor(Color.rgb(234, 240, 247))
                     textSize = 16f
                     setPadding(0, 10, 0, 10)
                 })
             }
-            check(1)
+            check(getChildAt(0).id)
         }
         val scroll = ScrollView(this).apply {
             addView(serverGroup)
@@ -98,7 +99,8 @@ abstract class BaseWidgetConfigureActivity : Activity() {
         }
 
         root.addView(actionButton("Add ${mode.buttonLabel}") {
-            val serverIndex = (serverGroup.checkedRadioButtonId - 1).coerceAtLeast(0)
+            val checkedView = serverGroup.findViewById<RadioButton>(serverGroup.checkedRadioButtonId)
+            val serverIndex = serverGroup.indexOfChild(checkedView).coerceAtLeast(0)
             val server = servers[serverIndex]
             when (mode) {
                 WidgetConfigureMode.Server -> {
