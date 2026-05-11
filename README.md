@@ -6,6 +6,7 @@ NGX Monitor is an Android client for `ngx_http_monitoring_module`. It is built w
 
 - Fleet dashboard for multiple servers with live status, tags, favorites, search, and critical-first sorting.
 - Server detail cockpit with system, Nginx, request, disk, history, alert, and route diagnostics views.
+- Home-screen widgets for fleet status, server resource bars, metric sparklines, telemetry graphs, and incident watch.
 - JSON API polling via `/monitor/api` and health checks via `/monitor/health`.
 - Foreground live streaming via `/monitor/live` Server-Sent Events.
 - Encrypted per-server credentials for monitor tokens and optional Nginx Basic Auth.
@@ -47,6 +48,25 @@ The app keeps the URL hostname unchanged and only substitutes DNS results intern
 
 Android or the VPN app may still block LAN access completely. In that case, the app shows the failure in the Route panel but cannot override the VPN policy.
 
+## Home-Screen Widgets
+
+The app provides five Android widgets with separate picker previews and labels:
+
+- **NGX Fleet Pulse**: all-server visual status strip, large fleet health state, and priority servers.
+- **NGX Server Bars**: one selected server with large status text and CPU, memory, and storage bars.
+- **NGX Metric Sparkline**: one selected server and one focused signal with a large value and history graph.
+- **NGX Telemetry Graph**: one selected server with CPU, memory, and storage trend lines.
+- **NGX Incident Watch**: fleet incident queue for unreachable, blocked, degraded, or insecure servers.
+
+Widgets update automatically through Android's widget scheduler and after the app's periodic background checks. Each widget also has an icon refresh control that fetches fresh monitor data for that widget's scope.
+
+To add a widget:
+
+1. Long-press the Android home screen.
+2. Choose Widgets.
+3. Select NGX Monitor.
+4. For server, metric, and telemetry graph widgets, choose the server during configuration. Metric widgets also ask which signal to graph.
+
 ## Security
 
 - Prefer HTTPS for monitor endpoints.
@@ -87,6 +107,7 @@ app/src/main/java/net/rodakot/ngxhttpmonitoringclient/
   model/         Server, metric, alert, and route data models
   ui/            Compose command-deck UI
   ui/theme/      Material theme and colors
+  widget/        Android home-screen widgets
 ```
 
 ## App Assets
@@ -94,5 +115,6 @@ app/src/main/java/net/rodakot/ngxhttpmonitoringclient/
 - Launcher icon foreground/background: `app/src/main/res/drawable/ic_launcher_foreground.xml`, `ic_launcher_background.xml`
 - Splash artwork: `app/src/main/res/drawable/splash_hero.xml`
 - Splash background: `app/src/main/res/drawable/splash_screen.xml`
+- Widget layouts: `app/src/main/res/layout/widget_fleet.xml`, `widget_server.xml`, `widget_metric.xml`, `widget_graph.xml`, `widget_incidents.xml`
 
 These assets are vector drawables, so they scale cleanly across screen densities.

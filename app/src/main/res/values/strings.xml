@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">NGX Monitor</string>
+    <string name="widget_fleet_label">NGX Fleet Pulse</string>
+    <string name="widget_server_label">NGX Server Bars</string>
+    <string name="widget_metric_label">NGX Metric Sparkline</string>
+    <string name="widget_graph_label">NGX Telemetry Graph</string>
+    <string name="widget_incidents_label">NGX Incident Watch</string>
+    <string name="widget_fleet_description">Visual all-server status strip with online, watch, and down groups.</string>
+    <string name="widget_server_description">One selected server with large health state and CPU, memory, and storage bars.</string>
+    <string name="widget_metric_description">One focused metric with a large value and history sparkline.</string>
+    <string name="widget_graph_description">One selected server with CPU, memory, and storage trend lines.</string>
+    <string name="widget_incidents_description">Fleet incident queue with the highest-priority unreachable or degraded servers.</string>
+    <string name="widget_refresh">Refresh widget</string>
+    <string name="widget_fleet_graph">Fleet status strip</string>
+    <string name="widget_metric_graph">Metric history graph</string>
+    <string name="widget_graph_chart">Telemetry trend graph</string>
 </resources>

@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import net.rodakot.ngxhttpmonitoringclient.data.MonitorRepository
+import net.rodakot.ngxhttpmonitoringclient.widget.MonitorWidgetUpdater
 
 class MonitorJobService : JobService() {
     private var scope: CoroutineScope? = null
@@ -37,5 +38,6 @@ class MonitorJobService : JobService() {
                 MonitorNotifications.showAlert(applicationContext, server, alert)
             }
         }
+        MonitorWidgetUpdater.updateAll(applicationContext, refreshNetwork = false)
     }
 }

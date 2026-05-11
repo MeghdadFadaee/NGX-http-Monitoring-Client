@@ -32,6 +32,79 @@
             android:name=".background.MonitorJobService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <activity
+            android:name=".widget.ServerWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.NGXHttpMonitoringClient" />
+        <activity
+            android:name=".widget.MetricWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.NGXHttpMonitoringClient" />
+        <activity
+            android:name=".widget.GraphWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.NGXHttpMonitoringClient" />
+
+        <receiver
+            android:name=".widget.FleetWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_fleet_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_fleet_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ServerWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_server_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_server_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.MetricWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_metric_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_metric_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.GraphWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_graph_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_graph_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.IncidentsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_incidents_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_incidents_info" />
+        </receiver>
     </application>
 
 </manifest>
