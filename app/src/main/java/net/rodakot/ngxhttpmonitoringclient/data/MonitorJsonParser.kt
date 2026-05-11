@@ -51,14 +51,43 @@ object MonitorJsonParser {
         if (disk == null) return null
         disk.number("used_pct")?.let { return it }
         disk.number("used_percent")?.let { return it }
+
+        disk.obj("filesystem")?.let { filesystem ->
+            filesystem.obj("/")?.diskUsagePercent()?.let { return it }
+            var max: Double? = null
+            val names = filesystem.keys()
+            while (names.hasNext()) {
+                val item = filesystem.optJSONObject(names.next()) ?: continue
+                val usage = item.diskUsagePercent()
+                if (usage != null && (max == null || usage > max!!)) max = usage
+            }
+            if (max != null) return max
+        }
+
         val filesystems = disk.array("filesystems") ?: disk.array("mounts") ?: return null
         var max: Double? = null
         for (index in 0 until filesystems.length()) {
             val item = filesystems.optJSONObject(index) ?: continue
-            val usage = item.number("used_pct") ?: item.number("used_percent") ?: item.number("usage")
+            val usage = item.diskUsagePercent()
+            if (usage != null && item.mountPath() == "/") return usage
             if (usage != null && (max == null || usage > max!!)) max = usage
         }
         return max
+    }
+
+    private fun JSONObject.diskUsagePercent(): Double? {
+        number("used_pct")?.let { return it }
+        number("used_percent")?.let { return it }
+        number("usage")?.let { return it }
+        number("usage_pct")?.let { return it }
+        val used = firstNumber("used", "used_size", "used_bytes", "used_kb")
+        val total = firstNumber("total", "total_size", "total_bytes", "size", "size_bytes", "total_kb")
+        return usedPercentFromSizes(used, total)
+    }
+
+    internal fun usedPercentFromSizes(used: Double?, total: Double?): Double? {
+        if (used == null || total == null || total <= 0.0) return null
+        return used / total * 100.0
     }
 
     private fun normalizePercent(value: Double?): Double? {
@@ -69,14 +98,28 @@ object MonitorJsonParser {
     private fun JSONObject.obj(name: String): JSONObject? = optJSONObject(name)
     private fun JSONObject.array(name: String): JSONArray? = optJSONArray(name)
 
+    private fun JSONObject.firstNumber(vararg names: String): Double? {
+        for (name in names) number(name)?.let { return it }
+        return null
+    }
+
+    private fun JSONObject.mountPath(): String? {
+        return string("path") ?: string("mount") ?: string("mount_point") ?: string("mounted_on")
+    }
+
     private fun JSONObject.number(name: String): Double? {
         if (!has(name) || isNull(name)) return null
         val value = opt(name)
         return when (value) {
             is Number -> value.toDouble()
-            is String -> value.toDoubleOrNull()
+            is String -> value.trim().removeSuffix("%").replace(",", "").toDoubleOrNull()
             else -> null
         }
+    }
+
+    private fun JSONObject.string(name: String): String? {
+        if (!has(name) || isNull(name)) return null
+        return optString(name).takeIf { it.isNotBlank() }
     }
 
     private fun JSONObject.int(name: String): Int? {
