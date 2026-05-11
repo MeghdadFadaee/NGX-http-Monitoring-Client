@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.NGXHttpMonitoringClient.Launcher" parent="Theme.NGXHttpMonitoringClient">
+        <item name="android:windowSplashScreenBackground">@color/command_black</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_hero</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/command_black</item>
+    </style>
+</resources>

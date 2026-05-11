@@ -16,6 +16,7 @@ import net.rodakot.ngxhttpmonitoringclient.ui.theme.NGXHttpMonitoringClientTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_NGXHttpMonitoringClient)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNotificationPermission()
