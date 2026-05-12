@@ -51,7 +51,8 @@ Signed upload bundle, after signing values are configured:
 
 ```powershell
 $env:GRADLE_USER_HOME='C:\Users\meghdad\AndroidStudioProjects\NGXhttpMonitoringClient\.gradle-user'
-.\gradlew.bat :app:bundleRelease --console=plain
+.\gradlew.bat :app:bundleRelease --console=plain  # for bulding aab
+.\gradlew.bat :app:assembleRelease --console=plain # for bulding apk
 ```
 
 Output:

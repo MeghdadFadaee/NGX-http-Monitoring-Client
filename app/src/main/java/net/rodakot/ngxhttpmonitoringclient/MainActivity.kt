@@ -4,11 +4,15 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import net.rodakot.ngxhttpmonitoringclient.ui.MonitorApp
@@ -18,6 +22,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_NGXHttpMonitoringClient)
         super.onCreate(savedInstanceState)
+        window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         enableEdgeToEdge()
         requestNotificationPermission()
         setContent {
@@ -26,7 +31,9 @@ class MainActivity : ComponentActivity() {
                 onDispose { controller.close() }
             }
             NGXHttpMonitoringClientTheme {
-                MonitorApp(controller)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    MonitorApp(controller)
+                }
             }
         }
     }

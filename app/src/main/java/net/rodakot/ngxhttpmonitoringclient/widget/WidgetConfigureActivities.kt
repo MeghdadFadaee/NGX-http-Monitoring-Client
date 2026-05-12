@@ -36,6 +36,7 @@ abstract class BaseWidgetConfigureActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         setResult(RESULT_CANCELED)
         appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -50,6 +51,8 @@ abstract class BaseWidgetConfigureActivity : Activity() {
         val servers = repository.servers()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            textDirection = View.TEXT_DIRECTION_LTR
             setPadding(32, 32, 32, 32)
             setBackgroundColor(Color.rgb(14, 17, 22))
         }
